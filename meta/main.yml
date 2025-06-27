@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  author: Nassim 
+  author: NSupDeVinci
   description: Déploie un site WordPress avec Apache/MariaDB, compatible Debian et Rocky Linux.
   company: ""
   license: MIT
