@@ -1,0 +1,39 @@
+---
+apache_packages_debian:
+  - apache2
+  - libapache2-mod-php
+  - php
+  - php-mysql
+  - php-cli
+  - php-curl
+  - php-gd
+  - php-mbstring
+  - php-xml
+  - php-xmlrpc
+  - php-soap
+  - php-intl
+  - php-zip
+  - mariadb-server
+  - python3-mysqldb
+
+apache_packages_rocky:
+  - httpd
+  - php
+  - php-mysqlnd
+  - php-cli
+  - php-curl
+  - php-gd
+  - php-mbstring
+  - php-xml
+  - php-soap
+  - php-intl
+  - php-zip
+  - mariadb-server
+  - python3-PyMySQL
+
+apache_service_debian: apache2
+apache_service_rocky: httpd
+
+# Chemins spécifiques pour Apache
+apache_site_conf_debian: /etc/apache2/sites-available/wordpress.conf
+apache_site_conf_rocky: /etc/httpd/conf.d/wordpress.conf

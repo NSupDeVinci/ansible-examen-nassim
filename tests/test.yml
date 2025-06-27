@@ -1,0 +1,7 @@
+---
+- name: Test WordPress
+  hosts: all
+  become: true
+  roles:
+    - wordpress
+

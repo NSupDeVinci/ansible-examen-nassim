@@ -1,0 +1,147 @@
+---
+
+# Installe les paquets nécessaires selon la distribution
+- name: Installer les paquets nécessaires pour Debian
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  loop: "{{ apache_packages_debian }}"
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Installer les paquets nécessaires pour Rocky Linux
+  dnf:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ apache_packages_rocky }}"
+  when: ansible_facts['os_family'] == 'RedHat'
+  become: true
+
+# Démarre et active le service Apache/MariaDB selon l’OS
+- name: Démarrer Apache sur Debian
+  service:
+    name: apache2
+    state: started
+    enabled: yes
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Démarrer Apache sur Rocky
+  service:
+    name: httpd
+    state: started
+    enabled: yes
+  when: ansible_facts['os_family'] == 'RedHat'
+  become: true
+
+- name: Démarrer MariaDB sur Debian
+  service:
+    name: mariadb
+    state: started
+    enabled: yes
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Démarrer MariaDB sur Rocky
+  service:
+    name: mariadb
+    state: started
+    enabled: yes
+  when: ansible_facts['os_family'] == 'RedHat'
+  become: true
+
+# Télécharge et déploie WordPress
+- name: Télécharger WordPress
+  get_url:
+    url: "{{ wordpress_download_url }}"
+    dest: /tmp/latest.tar.gz
+
+- name: Extraire WordPress
+  unarchive:
+    src: /tmp/latest.tar.gz
+    dest: /var/www/html
+    remote_src: yes
+    creates: "{{ wordpress_dir }}"
+
+- name: Créer le répertoire uploads
+  file:
+    path: "{{ wordpress_dir }}/wp-content/uploads"
+    state: directory
+    owner: apache
+    group: apache
+    mode: '0755'
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Créer le répertoire uploads (Debian)
+  file:
+    path: "{{ wordpress_dir }}/wp-content/uploads"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Mettre les droits sur le dossier WordPress (Debian)
+  file:
+    path: "{{ wordpress_dir }}"
+    recurse: yes
+    owner: www-data
+    group: www-data
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Mettre les droits sur le dossier WordPress (Rocky)
+  file:
+    path: "{{ wordpress_dir }}"
+    recurse: yes
+    owner: apache
+    group: apache
+  when: ansible_facts['os_family'] == 'RedHat'
+
+# Création BDD et utilisateur (commun aux 2 distros)
+- name: Créer la base de données MariaDB
+  community.mysql.mysql_db:
+    name: "{{ wordpress_db_name }}"
+    state: present
+  become: true
+
+- name: Créer l'utilisateur MariaDB
+  community.mysql.mysql_user:
+    name: "{{ wordpress_db_user }}"
+    password: "{{ wordpress_db_password }}"
+    priv: "{{ wordpress_db_name }}.*:ALL"
+    state: present
+  become: true
+
+# Apache config
+- name: Copier le fichier de configuration Apache pour WordPress (Debian)
+  template:
+    src: wordpress.conf.j2
+    dest: "{{ apache_site_conf_debian }}"
+  notify: restart apache debian
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Copier le fichier de configuration Apache pour WordPress (Rocky)
+  template:
+    src: wordpress.conf.j2
+    dest: "{{ apache_site_conf_rocky }}"
+  notify: restart apache rocky
+  when: ansible_facts['os_family'] == 'RedHat'
+
+# Activation site/config
+- name: Activer le site WordPress (Debian)
+  command: a2ensite wordpress.conf
+  args:
+    creates: /etc/apache2/sites-enabled/wordpress.conf
+  notify: restart apache debian
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Activer mod_rewrite (Debian)
+  command: a2enmod rewrite
+  notify: restart apache debian
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Désactiver le site par défaut (Debian)
+  command: a2dissite 000-default.conf
+  notify: restart apache debian
+  when: ansible_facts['os_family'] == 'Debian'
